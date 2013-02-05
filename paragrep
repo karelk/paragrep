@@ -14,6 +14,7 @@
 # for description and examples, use: paragrep --help
 #
 
+
 import os, sys, argparse, re
 
 parser = argparse.ArgumentParser()
@@ -39,11 +40,13 @@ CASE_SENSITIVITY_FLAG =  re.IGNORECASE          if args.ignorecase     else 0
 WORD_MATCH_FLAG       =  r'\b'                  if args.word           else ''
 COLORED_STRING        =  r'\033[1;31m\1\033[0m' if sys.stdout.isatty() else r'\1'
 
+
 # format "pattern" arguments: (pattern1) (pattern2) ...
 # if WORD_MATCH_FLAG is set: (\bpattern1\b) (\bpattern2\b) ...
 def generatePattern():
   for item in args.pattern:
     yield r'(' + WORD_MATCH_FLAG + item + WORD_MATCH_FLAG + r')'
+
 
 PATTERN = []
 WHITESPACE = re.compile('^\s+$')
@@ -52,6 +55,7 @@ PATTERN_COMBINED = re.compile(r'(' + '|'.join(generatePattern()) + r')', flags=C
 
 for i in range(len(args.pattern)):
   PATTERN.append(re.compile(WORD_MATCH_FLAG + args.pattern[i] + WORD_MATCH_FLAG, flags=CASE_SENSITIVITY_FLAG))
+
 
 # recursively list all files in a direcory. Return a list
 def listFiles(dir):
@@ -71,12 +75,14 @@ def listFiles(dir):
       sys.stderr.write('%s\n' % err)
   return file_list
 
+
 # read file, print paragraph if it matches all patterns (non-matches if '-v' is used)
 def paraGrep(f):
   count = 0
   paragraph = []
   line_number = 0
   match = [0] * len(args.pattern)
+
   while True:
     line = f.readline()
     line_number += 1
@@ -102,11 +108,15 @@ def paraGrep(f):
         if re.search(PATTERN[i], line):
           match[i] = 1
 
+
 number_of_files = 0
 number_of_matches = 0
 total_number_of_matches = 0
 
+# if stdin is not a pipe
 if sys.stdin.isatty():
+
+# if 'path' is  a file
   if os.path.isfile(args.path[0]):
     try:
       file = open(args.path[0],'r')
@@ -120,6 +130,8 @@ if sys.stdin.isatty():
     except KeyboardInterrupt:
       sys.stderr.write(' \033[1;31mprogram interrupted by user\033[0m\n')
       sys.exit(1)
+
+# if 'path' is a directory
   elif os.path.isdir(args.path[0]):
     if not args.recursive:
       sys.stderr.write(' \033[1;31m%s\033[0m is a directory. Use option: \033[1;31m-r\033[0m  \n' % args.path[0])
@@ -147,7 +159,11 @@ if sys.stdin.isatty():
         print '  files grepped: \033[0;32m%s\033[0m' % number_of_files
         print '  total matches: \033[0;32m%s\033[0m' % total_number_of_matches
         print '\033[0;32m=============================================================\033[0m'
+
+# if 'path' does not exist
   else:
     sys.stderr.write('[Errno ] not a file or directory: %s \n' % args.path[0])
+
+# if stdin is a pipe
 else:
   number_of_matches = paraGrep(sys.stdin)
