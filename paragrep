@@ -12,8 +12,6 @@
 # usage:   paragrep [-c] [-i] [-n] [-r] [-s] [-v] [-w] pattern [pattern ...] path
 #
 # for description and examples, use: paragrep --help
-#
-
 
 import os, sys, argparse, re
 
@@ -27,22 +25,24 @@ parser.add_argument('-v','--invert-match', action='store_true', help='Invert mat
 parser.add_argument('-w','--word'        , action='store_true', help='Match only whole words')
 parser.add_argument('pattern'            , nargs='+'          , help='match pattern(s)')
 
-# if stdin is not a pipe, than last argument must be "path", with exactly one parameter
+
+# if stdin is not a pipe, than last argument must be 'path'
 if sys.stdin.isatty():
   parser.add_argument('path', nargs=1, help='Path to search. If directory, option -r must be used')
 
 # parse command line arguments
 args = parser.parse_args()
 
-INVERT_MATCH_FLAG     =  0                      if args.invert_match   else 1
+INVERT_MATCH_FLAG     =  1                      if args.invert_match   else 0
 LINE_NUMBER_FLAG      =  True                   if args.line_number    else False
 CASE_SENSITIVITY_FLAG =  re.IGNORECASE          if args.ignorecase     else 0
 WORD_MATCH_FLAG       =  r'\b'                  if args.word           else ''
 COLORED_STRING        =  r'\033[1;31m\1\033[0m' if sys.stdout.isatty() else r'\1'
 
+number_of_files, number_of_matches, total_number_of_matches = 0, 0, 0
 
-# format "pattern" arguments: (pattern1) (pattern2) ...
-# if WORD_MATCH_FLAG is set: (\bpattern1\b) (\bpattern2\b) ...
+
+# format 'pattern' arguments: (pattern1) (pattern2) ...
 def generatePattern():
   for item in args.pattern:
     yield r'(' + WORD_MATCH_FLAG + item + WORD_MATCH_FLAG + r')'
@@ -76,42 +76,41 @@ def listFiles(dir):
   return file_list
 
 
+def printLine(ln0, ln1):
+  if LINE_NUMBER_FLAG:
+    print '\033[0;32m%s:\033[0m %s' % (ln0, re.sub(PATTERN_COMBINED, COLORED_STRING, ln1)),
+  else:
+    print re.sub(PATTERN_COMBINED, COLORED_STRING, ln1),
+
+
 # read file, print paragraph if it matches all patterns (non-matches if '-v' is used)
 def paraGrep(f):
-  count = 0
-  paragraph = []
+  hit_count   = 0
   line_number = 0
-  match = [0] * len(args.pattern)
+  paragraph   = []
+  match       = [0] * len(args.pattern)
 
   while True:
     line = f.readline()
     line_number += 1
-    if (WHITESPACE.match(line) or line == ''):
-      if paragraph:
-        if INVERT_MATCH_FLAG in match:
-          count += 1
+    if (WHITESPACE.match(line) or line == ''): 
+      if paragraph: 
+        if not (INVERT_MATCH_FLAG in match):
+          hit_count += 1
           if not args.count:
-            if LINE_NUMBER_FLAG:
-              for ln in paragraph:
-                print '\033[0;32m%s:\033[0m %s' % (ln[0], re.sub(PATTERN_COMBINED, COLORED_STRING, ln[1])),
-            else:
-              for ln in paragraph:
-                print re.sub(PATTERN_COMBINED, COLORED_STRING, ln[1]),
+            for ln in paragraph:
+              printLine(ln[0], ln[1])
             print
-        del paragraph[:]
+        del paragraph[:] 
       if (line == ''):
-        return count
+        return hit_count
       match = [0] * (len(args.pattern))
-    else:
+    else: 
       paragraph.append([line_number, line])
       for i in range(len(args.pattern)):
         if re.search(PATTERN[i], line):
           match[i] = 1
 
-
-number_of_files = 0
-number_of_matches = 0
-total_number_of_matches = 0
 
 # if stdin is not a pipe
 if sys.stdin.isatty():
