@@ -10,8 +10,7 @@
 # paragraphs matching all patterns. Command line options are simmilar to grep:
 #
 # usage:   paragrep [-c] [-i] [-n] [-r] [-s] [-v] [-w] pattern [pattern ...] path
-#
-# for description and examples, use: paragrep --help
+
 
 import os, sys, argparse, re
 
@@ -28,7 +27,7 @@ parser.add_argument('pattern'            , nargs='+'          , help='match patt
 
 # if stdin is not a pipe, than last argument must be 'path' (file or directory)
 if sys.stdin.isatty():
-  parser.add_argument('path', nargs=1, help='Path to search. If directory, option -r must be used')
+    parser.add_argument('path', nargs=1, help='Path to search. If directory, option -r must be used')
 
 
 # parse command line arguments
@@ -43,7 +42,7 @@ COLORED_STRING        =  r'\033[1;31m\1\033[0m' if sys.stdout.isatty() else r'\1
 
 # define colors
 RED, GREEN, NORMAL    = '\033[1;31m', '\033[0;32m', '\033[0m'
-# to disable colors entirely, uncomment following line
+# to disable colors entirely, uncomment the following line
 #RED, GREEN, NORMAL, COLORED_STRING = '', '', '', r'\1'
 
 number_of_files, number_of_matches, total_number_of_matches = 0, 0, 0
@@ -51,8 +50,8 @@ number_of_files, number_of_matches, total_number_of_matches = 0, 0, 0
 
 # format 'pattern' arguments
 def generatePattern():
-  for item in args.pattern:
-    yield r'(' + WORD_MATCH_FLAG + item + WORD_MATCH_FLAG + r')'
+    for item in args.pattern:
+        yield r'(' + WORD_MATCH_FLAG + item + WORD_MATCH_FLAG + r')'
 
 
 # matches any of the patterns: ((pattern1)|(pattern2)|(pattern3) ... ).
@@ -63,115 +62,127 @@ WHITESPACE = re.compile('^\s+$')
 # create a list of compiled patterns
 PATTERN = []
 for i in range(len(args.pattern)):
-  PATTERN.append(re.compile(WORD_MATCH_FLAG + args.pattern[i] + WORD_MATCH_FLAG, flags=CASE_SENSITIVITY_FLAG))
-
+    PATTERN.append(re.compile(WORD_MATCH_FLAG + args.pattern[i] + WORD_MATCH_FLAG, flags=CASE_SENSITIVITY_FLAG))
+                                                                
 
 # recursively list all files in a direcory. Return a list
 def listFiles(dir):
-  file_list = []
-  try:
-    for item in os.listdir(dir):
-      if os.path.isfile(os.path.join(dir,item)):
-        file_list.append(os.path.join(dir,item))
-      elif os.path.isdir(os.path.join(dir,item)):
-        for fff in listFiles(os.path.join(dir,item)):
-          file_list.append(fff)
-      else:
+    file_list = []
+    try:
+        for item in os.listdir(dir):
+            if os.path.isfile(os.path.join(dir,item)):
+                file_list.append(os.path.join(dir,item))
+            elif os.path.isdir(os.path.join(dir,item)):
+                for fff in listFiles(os.path.join(dir,item)):
+                    file_list.append(fff)
+            else:
+                if not args.supress:
+                    sys.stderr.write('[Errno ] not a file or directory: %s \n' % os.path.join(dir,item))
+    except OSError as err:
         if not args.supress:
-          sys.stderr.write('[Errno ] not a file or directory: %s \n' % os.path.join(dir,item))
-  except OSError as err:
-    if not args.supress:
-      sys.stderr.write('%s\n' % err)
-  return file_list
+            sys.stderr.write('%s\n' % err)
+    return file_list
+
+# alternative listFile function, using os.walk()
+def listFiles2(dir):
+    files = []
+    try:  
+        for (path, subdirs, new_files) in os.walk(dir):
+            for new_file in new_files:
+                files.append(os.path.join(path, new_file))
+    except OSError as err:
+        if not args.supress:
+            sys.stderr.write('%s\n' % err)
+    return files
 
 
 def printLine(ln0, ln1):
-  if LINE_NUMBER_FLAG:
-    print '%s%s:%s %s' % (GREEN, ln0, NORMAL, re.sub(PATTERN_COMBINED, COLORED_STRING, ln1)),
-  else:
-    print re.sub(PATTERN_COMBINED, COLORED_STRING, ln1),
+    if LINE_NUMBER_FLAG:
+        print '%s%s:%s %s' % (GREEN, ln0, NORMAL, re.sub(PATTERN_COMBINED, COLORED_STRING, ln1)),
+    else:
+        print re.sub(PATTERN_COMBINED, COLORED_STRING, ln1),
 
 
 # read file, print paragraph if it matches all patterns (non-matches if '-v' is used)
 def paraGrep(f):
-  hit_count   = 0
-  line_number = 0
-  paragraph   = []
-  match       = [0] * len(args.pattern)
+    hit_count   = 0
+    line_number = 0
+    paragraph   = []
+    match       = [0] * len(args.pattern)
 
-  while True:
-    line = f.readline()
-    line_number += 1
-    if (WHITESPACE.match(line) or line == ''): 
-      if paragraph: 
-        if not (INVERT_MATCH_FLAG in match):
-          hit_count += 1
-          if not args.count:
-            for ln in paragraph:
-              printLine(ln[0], ln[1])
-            print
-        del paragraph[:] 
-      if (line == ''):
-        return hit_count
-      match = [0] * (len(args.pattern))
-    else: 
-      paragraph.append([line_number, line])
-      for i in range(len(args.pattern)):
-        if re.search(PATTERN[i], line):
-          match[i] = 1
+    while True:
+        line = f.readline()
+        line_number += 1
+        if (WHITESPACE.match(line) or line == ''): 
+            if paragraph: 
+                if not (INVERT_MATCH_FLAG in match):
+                    hit_count += 1
+                    if not args.count:
+                        for ln in paragraph:
+                            printLine(ln[0], ln[1])
+                        print
+                del paragraph[:] 
+            if (line == ''):
+                return hit_count
+            match = [0] * (len(args.pattern))
+        else: 
+            paragraph.append([line_number, line])
+            for i in range(len(args.pattern)):
+                if re.search(PATTERN[i], line):
+                    match[i] = 1
 
 
 # if stdin is not a pipe
 if sys.stdin.isatty():
 # if 'path' is  a file
 
-  if os.path.isfile(args.path[0]):
-    try:
-      file = open(args.path[0],'r')
-      number_of_matches = paraGrep(file)      
-      if args.count:
-        print '%s: %s%s%s' % (args.path[0], RED, number_of_matches, NORMAL)
-      file.close()
-    except IOError as err:
-      if not args.supress:
-        sys.stderr.write('%s\n' % err)
-    except KeyboardInterrupt:
-      sys.stderr.write(' %sprogram interrupted by user%s' %(RED, NORMAL))
-      sys.exit(1)
+    if os.path.isfile(args.path[0]):
+        try:
+            file = open(args.path[0],'r')
+            number_of_matches = paraGrep(file)      
+            if args.count:
+                print '%s: %s%s%s' % (args.path[0], RED, number_of_matches, NORMAL)
+            file.close()
+        except IOError as err:
+            if not args.supress:
+                sys.stderr.write('%s\n' % err)
+        except KeyboardInterrupt:
+            sys.stderr.write(' %sprogram interrupted by user%s' %(RED, NORMAL))
+            sys.exit(1)
 
 # if 'path' is a directory
-  elif os.path.isdir(args.path[0]):
-    if not args.recursive:
-      sys.stderr.write(' %s%s%s is a directory. Use option: %s-r%s  \n' % (RED, args.path[0], NORMAL, RED, NORMAL))
-      sys.exit(1)
-    else:
-      LINE_NUMBER_FLAG = False
-      for fn in listFiles(args.path[0]):
-        try:
-          file = open(fn,'r')
-          number_of_files += 1
-          number_of_matches = paraGrep(file)
-          if (args.count and number_of_matches):
-            print '%s: %s%s%s' % (fn, RED, number_of_matches, NORMAL)
-            total_number_of_matches = total_number_of_matches + number_of_matches
-          file.close()
-        except IOError as err:
-          if not args.supress:
-            sys.stderr.write('%s\n' % err)
-        except KeyboardInterrupt:
-          sys.stderr.write(' %sprogram interrupted by user%s' % (RED, NORMAL))
-          file.close()
-          sys.exit(1)
-      if args.count:
-        print '%s=============================================================%s' % (GREEN, NORMAL)
-        print '  files grepped: %s%s%s' % (GREEN, number_of_files, NORMAL)
-        print '  total matches: %s%s%s' % (GREEN, total_number_of_matches, NORMAL)
-        print '%s=============================================================%s' % (GREEN, NORMAL)
+    elif os.path.isdir(args.path[0]):
+        if not args.recursive:
+            sys.stderr.write(' %s%s%s is a directory. Use option: %s-r%s  \n' % (RED, args.path[0], NORMAL, RED, NORMAL))
+            sys.exit(1)
+        else:
+            LINE_NUMBER_FLAG = False
+            for fn in listFiles(args.path[0]):
+                try:
+                    file = open(fn,'r')
+                    number_of_files += 1
+                    number_of_matches = paraGrep(file)
+                    if (args.count and number_of_matches):
+                        print '%s: %s%s%s' % (fn, RED, number_of_matches, NORMAL)
+                        total_number_of_matches = total_number_of_matches + number_of_matches
+                    file.close()
+                except IOError as err:
+                    if not args.supress:
+                        sys.stderr.write('%s\n' % err)
+                except KeyboardInterrupt:
+                    sys.stderr.write(' %sprogram interrupted by user%s' % (RED, NORMAL))
+                    file.close()
+                    sys.exit(1)
+            if args.count:
+                print '%s=============================================================%s' % (GREEN, NORMAL)
+                print '  files grepped: %s%s%s' % (GREEN, number_of_files, NORMAL)
+                print '  total matches: %s%s%s' % (GREEN, total_number_of_matches, NORMAL)
+                print '%s=============================================================%s' % (GREEN, NORMAL)
 
 # if 'path' does not exist
-  else:
-    sys.stderr.write('[Errno ] not a file or directory: %s \n' % args.path[0])
+    else:
+        sys.stderr.write('[Errno ] not a file or directory: %s \n' % args.path[0])
 
 # if stdin is a pipe
 else:
-  number_of_matches = paraGrep(sys.stdin)
+    number_of_matches = paraGrep(sys.stdin)
