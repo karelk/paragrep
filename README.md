@@ -3,10 +3,10 @@ paragrep
 
  Paragrep: print paragraph matching pattern(s)
 
- Paragrep is simmilar to grep. But instead of printing matching line, paragrep
+ Paragrep is similar to grep. But instead of printing matching line, paragrep
  will print matching paragraph (one or more lines of text, separated by whitespace
  characters). When multiple search patterns are provided, paragrep will print 
- paragraphs matching all patterns. Command line options are simmilar to grep:
+ paragraphs matching all patterns. Command line options are similar to grep:
 
  usage:   paragrep [-c] [-i] [-n] [-r] [-s] [-v] [-w] pattern [pattern ...] path
 
