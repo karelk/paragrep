@@ -186,3 +186,4 @@ if sys.stdin.isatty():
 # if stdin is a pipe
 else:
     number_of_matches = paraGrep(sys.stdin)
+
