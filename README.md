@@ -10,8 +10,8 @@ paragrep
 
  usage:   paragrep [-c] [-i] [-n] [-r] [-s] [-v] [-w] pattern [pattern ...] path
 
-Example usages
-==============
+Example usage
+=============
 
  paragrep 'eth0' /etc/network/interfaces
 
