@@ -84,18 +84,6 @@ def listFiles(dir):
             sys.stderr.write('%s\n' % err)
     return file_list
 
-# alternative listFile function, using os.walk()
-def listFiles2(dir):
-    files = []
-    try:  
-        for (path, subdirs, new_files) in os.walk(dir):
-            for new_file in new_files:
-                files.append(os.path.join(path, new_file))
-    except OSError as err:
-        if not args.supress:
-            sys.stderr.write('%s\n' % err)
-    return files
-
 
 def printLine(ln0, ln1):
     if LINE_NUMBER_FLAG:
