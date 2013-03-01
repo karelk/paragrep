@@ -1,5 +1,5 @@
 paragrep
-=========
+========
 
  Paragrep: print paragraph matching pattern(s)
 
