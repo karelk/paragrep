@@ -4,15 +4,14 @@
 #
 # Paragrep: print paragraph matching pattern(s)
 #
-# Paragrep is simmilar to grep. But instead of printing matching line, paragrep
-# will print matching paragraph (one or more lines of text, separated by whitespace
+# Paragrep is simmilar to grep. But instead of printing matching line, it will
+# print matching paragraph (one or more lines of text, separated by whitespace
 # characters). When multiple search patterns are provided, paragrep will print 
 # paragraphs matching all patterns. Command line options are simmilar to grep:
 #
 # usage:   paragrep [-c] [-i] [-n] [-r] [-s] [-v] [-w] pattern [pattern ...] path
 
 
-############################
 import os, sys, argparse, re
 
 parser = argparse.ArgumentParser()
@@ -45,6 +44,7 @@ COLORED_STRING        =  r'\033[1;31m\1\033[0m' if sys.stdout.isatty() else r'\1
 RED, GREEN, NORMAL    = '\033[1;31m', '\033[0;32m', '\033[0m'
 # to disable colors entirely, uncomment the following line
 #RED, GREEN, NORMAL, COLORED_STRING = '', '', '', r'\1'
+
 
 number_of_files, number_of_matches, total_number_of_matches = 0, 0, 0
 
@@ -123,8 +123,8 @@ def paraGrep(f):
 
 # if stdin is not a pipe
 if sys.stdin.isatty():
-# if 'path' is  a file
 
+# if 'path' is  a file
     if os.path.isfile(args.path[0]):
         try:
             file = open(args.path[0],'r')
@@ -175,4 +175,3 @@ if sys.stdin.isatty():
 # if stdin is a pipe
 else:
     number_of_matches = paraGrep(sys.stdin)
-
