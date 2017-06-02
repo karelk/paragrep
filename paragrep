@@ -1,72 +1,57 @@
 #!/usr/bin/python
 #
-# 2014, karelk@ethz.ch
+# 2013, karelk@ethz.ch
 #
 # Paragrep: print paragraph matching pattern(s)
 #
-# Paragrep is similar to grep. But instead of printing matching line, it will
-# print matching paragraph (one or more lines of text, separated by whitespace
+# Paragrep is simmilar to grep. But instead of printing matching line, paragrep
+# will print matching paragraph (one or more lines of text, separated by whitespace
 # characters). When multiple search patterns are provided, paragrep will print 
-# paragraphs matching all patterns. Command line options are similar to grep:
+# paragraphs matching all patterns. Command line options are simmilar to grep:
 #
-# usage:   paragrep [-c] [-i] [-n] [-r] [-s] [-v] [-w] pattern [pattern ...] path
-
+# usage:   paragrep [-c] [-i] [-F] [-n] [-r] [-s] [-v] [-w] pattern path [path ...]
+#
+# for description and examples, use: paragrep --help
+#
 
 import os, sys, argparse, re
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c','--count'       , action='store_true', help='Only print number of matching paragraphs per file')
+parser.add_argument('--color'            , action='store_true', help='Force color')
+parser.add_argument('-F','--fixed-strings'  , action='store_true', help='Interpret PATTERN as a list of fixed strings')
 parser.add_argument('-i','--ignorecase'  , action='store_true', help='Treat upper and lower characters as same')
 parser.add_argument('-n','--line-number' , action='store_true', help='Prefix each line of output with line number')
 parser.add_argument('-r','--recursive'   , action='store_true', help='When "path" is a directory, search all files recursively')
 parser.add_argument('-s','--supress'     , action='store_true', help="Suppress 'permission denied' error messages")
 parser.add_argument('-v','--invert-match', action='store_true', help='Invert matching: print non-matching paragraphs')
 parser.add_argument('-w','--word'        , action='store_true', help='Match only whole words')
-parser.add_argument('pattern'            , nargs='+'          , help='match pattern(s)')
+parser.add_argument('pattern'                                 , help='match pattern(s)')
 
-
-# if stdin is not a pipe, than last argument must be 'path' (file or directory)
 if sys.stdin.isatty():
-    parser.add_argument('path', nargs=1, help='Path to search. If directory, option -r must be used')
+    parser.add_argument('path', nargs='+', help='Path to search. If path is a directory, option -r must be used')
 
-
-# parse command line arguments
 args = parser.parse_args()
 
-
-INVERT_MATCH_FLAG     =  1                      if args.invert_match   else 0
-LINE_NUMBER_FLAG      =  True                   if args.line_number    else False
-CASE_SENSITIVITY_FLAG =  re.IGNORECASE          if args.ignorecase     else 0
-WORD_MATCH_FLAG       =  r'\b'                  if args.word           else ''
-COLORED_STRING        =  r'\033[1;31m\1\033[0m' if sys.stdout.isatty() else r'\1'
-
-# define colors
-RED, GREEN, NORMAL    = '\033[1;31m', '\033[0;32m', '\033[0m'
-# to disable colors entirely, uncomment the following line
-#RED, GREEN, NORMAL, COLORED_STRING = '', '', '', r'\1'
+INVERT_MATCH_FLAG     =  0                      if args.invert_match                   else 1
+LINE_NUMBER_FLAG      =  True                   if args.line_number                    else False
+CASE_SENSITIVITY_FLAG =  re.IGNORECASE          if args.ignorecase                     else 0
+WORD_MATCH_FLAG       =  r'\b'                  if args.word                           else ''
+COLORED_STRING        =  r'\033[1;31m\1\033[0m' if (sys.stdout.isatty() or args.color) else r'\1'
 
 
-number_of_files, number_of_matches, total_number_of_matches = 0, 0, 0
-
-
-# format 'pattern' arguments
-def generatePattern():
-    for item in args.pattern:
-        yield r'(' + WORD_MATCH_FLAG + item + WORD_MATCH_FLAG + r')'
-
-
-# matches any of the patterns: ((pattern1)|(pattern2)|(pattern3) ... ).
-PATTERN_COMBINED = re.compile(r'(' + '|'.join(generatePattern()) + r')', flags=CASE_SENSITIVITY_FLAG)
+NL = 1
 WHITESPACE = re.compile('^\s+$')
 
 
-# create a list of compiled patterns
-PATTERN = []
-for i in range(len(args.pattern)):
-    PATTERN.append(re.compile(WORD_MATCH_FLAG + args.pattern[i] + WORD_MATCH_FLAG, flags=CASE_SENSITIVITY_FLAG))
-                                                                
+if (args.fixed_strings or args.pattern in ['*','+','?']):
+    PATTERN = re.compile(r'(' + re.escape(args.pattern) + r')', flags=CASE_SENSITIVITY_FLAG)
+else:
+    PATTERN = re.compile(r'(' + args.pattern + r')', flags=CASE_SENSITIVITY_FLAG)
 
-# recursively list all files in a direcory. Return a list
+
+
+
 def listFiles(dir):
     file_list = []
     try:
@@ -85,93 +70,79 @@ def listFiles(dir):
     return file_list
 
 
-def printLine(ln0, ln1):
-    if LINE_NUMBER_FLAG:
-        print '%s%s:%s %s' % (GREEN, ln0, NORMAL, re.sub(PATTERN_COMBINED, COLORED_STRING, ln1)),
-    else:
-        print re.sub(PATTERN_COMBINED, COLORED_STRING, ln1),
-
-
-# read file, print paragraph if it matches all patterns (non-matches if '-v' is used)
 def paraGrep(f):
-    hit_count   = 0
+    global NL
+    count = 0
+    paragraph = []
     line_number = 0
-    paragraph   = []
-    match       = [0] * len(args.pattern)
+    match = 0
 
     while True:
         line = f.readline()
         line_number += 1
-        if (WHITESPACE.match(line) or line == ''): 
-            if paragraph: 
-                if not (INVERT_MATCH_FLAG in match):
-                    hit_count += 1
+        if (WHITESPACE.match(line) or line == ''):
+            if paragraph:
+                if INVERT_MATCH_FLAG == match:
+                    count += 1
                     if not args.count:
-                        for ln in paragraph:
-                            printLine(ln[0], ln[1])
+                        if NL:
+			                # print newline only once at the begining, if some output is going to be printed 
+                            print
+                            NL = 0
+                        if LINE_NUMBER_FLAG:
+                            for ln in paragraph:
+                                print '\033[0;32m%s:\033[0m %s' % (ln[0], re.sub(PATTERN, COLORED_STRING, ln[1])),
+                        else:
+                            for ln in paragraph:
+                                print re.sub(PATTERN, COLORED_STRING, ln[1]),
                         print
-                del paragraph[:] 
+                del paragraph[:]
             if (line == ''):
-                return hit_count
-            match = [0] * (len(args.pattern))
-        else: 
-            paragraph.append([line_number, line])
-            for i in range(len(args.pattern)):
-                if re.search(PATTERN[i], line):
-                    match[i] = 1
-
-
-# if stdin is not a pipe
-if sys.stdin.isatty():
-
-# if 'path' is  a file
-    if os.path.isfile(args.path[0]):
-        try:
-            file = open(args.path[0],'r')
-            number_of_matches = paraGrep(file)      
-            if args.count:
-                print '%s: %s%s%s' % (args.path[0], RED, number_of_matches, NORMAL)
-            file.close()
-        except IOError as err:
-            if not args.supress:
-                sys.stderr.write('%s\n' % err)
-        except KeyboardInterrupt:
-            sys.stderr.write(' %sprogram interrupted by user%s' %(RED, NORMAL))
-            sys.exit(1)
-
-# if 'path' is a directory
-    elif os.path.isdir(args.path[0]):
-        if not args.recursive:
-            sys.stderr.write(' %s%s%s is a directory. Use option: %s-r%s  \n' % (RED, args.path[0], NORMAL, RED, NORMAL))
-            sys.exit(1)
+                return count
+            match = 0
         else:
-            LINE_NUMBER_FLAG = False
-            for fn in listFiles(args.path[0]):
-                try:
-                    file = open(fn,'r')
-                    number_of_files += 1
-                    number_of_matches = paraGrep(file)
-                    if (args.count and number_of_matches):
-                        print '%s: %s%s%s' % (fn, RED, number_of_matches, NORMAL)
-                        total_number_of_matches = total_number_of_matches + number_of_matches
-                    file.close()
-                except IOError as err:
-                    if not args.supress:
-                        sys.stderr.write('%s\n' % err)
-                except KeyboardInterrupt:
-                    sys.stderr.write(' %sprogram interrupted by user%s' % (RED, NORMAL))
-                    file.close()
-                    sys.exit(1)
-            if args.count:
-                print '%s=============================================================%s' % (GREEN, NORMAL)
-                print '  files grepped: %s%s%s' % (GREEN, number_of_files, NORMAL)
-                print '  total matches: %s%s%s' % (GREEN, total_number_of_matches, NORMAL)
-                print '%s=============================================================%s' % (GREEN, NORMAL)
+            paragraph.append([line_number, line])
+            if re.search(PATTERN, line):
+                match = 1
 
-# if 'path' does not exist
-    else:
-        sys.stderr.write('[Errno ] not a file or directory: %s \n' % args.path[0])
 
-# if stdin is a pipe
+if sys.stdin.isatty():
+    for i in range(len(args.path)):
+        if os.path.isfile(args.path[i]):
+            try:
+                file = open(args.path[i],'r')
+                number_of_matches = paraGrep(file)      
+                if (args.count and number_of_matches):
+                    print '%s: \033[1;31m%s\033[0m' % (args.path[i], number_of_matches)
+                file.close()
+            except IOError as err:
+                if not args.supress:
+                    sys.stderr.write('%s\n' % err)
+            except KeyboardInterrupt:
+                sys.stderr.write(' \033[1;31mprogram interrupted by user\033[0m\n')
+                sys.exit(1)
+        elif os.path.isdir(args.path[i]):
+            if not args.recursive:
+                sys.stderr.write(' \033[1;31m%s\033[0m is a directory. Use option: \033[1;31m-r\033[0m  \n' % args.path[i])
+                sys.exit(1)
+            else:
+                LINE_NUMBER_FLAG = False
+                for fn in listFiles(args.path[i]):
+                    try:
+                        file = open(fn,'r')
+                        number_of_matches = paraGrep(file)
+                        if (args.count and number_of_matches):
+                            print '%s: \033[1;31m%s\033[0m' % (fn, number_of_matches)
+                        file.close()
+                    except IOError as err:
+                        if not args.supress:
+                            sys.stderr.write('%s\n' % err)
+                    except KeyboardInterrupt:
+                        sys.stderr.write(' \033[1;31mprogram interrupted by user\033[0m\n')
+                        file.close()
+                        sys.exit(1)
+        else:
+            sys.stderr.write('[Errno ] not a file or directory: %s \n' % args.path[i])
 else:
     number_of_matches = paraGrep(sys.stdin)
+
