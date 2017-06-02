@@ -108,7 +108,7 @@ if sys.stdin.isatty():
         if os.path.isfile(args.path[i]):
             try:
                 file = open(args.path[i],'r')
-                number_of_matches = paraGrep(file)      
+                number_of_matches = paraGrep(file)
                 if (args.count and number_of_matches):
                     print '%s: \033[1;31m%s\033[0m' % (args.path[i], number_of_matches)
                 file.close()
