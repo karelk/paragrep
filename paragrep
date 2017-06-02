@@ -17,7 +17,7 @@ import os, sys, argparse, re
 parser = argparse.ArgumentParser()
 parser.add_argument('-c','--count'         , action='store_true', help='Only print number of matching paragraphs per file')
 parser.add_argument('--color'              , action='store_true', help='Force color')
-parser.add_argument('-F','--fixed-strings' , action='store_true', help='Interpret PATTERN as a literal string')
+parser.add_argument('-F','--fixed-strings' , action='store_true', help='Interpret PATTERN as literal string')
 parser.add_argument('-i','--ignorecase'    , action='store_true', help='Treat upper and lower characters as same')
 parser.add_argument('-n','--line-number'   , action='store_true', help='Prefix each line of output with line number')
 parser.add_argument('-r','--recursive'     , action='store_true', help='When "path" is a directory, search all files recursively')
