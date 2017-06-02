@@ -8,7 +8,7 @@
 # print matching paragraph (one or more lines of text, separated by whitespace
 # characters). Command line options are similar to grep:
 #
-# usage:   paragrep [-c] [-i] [-F] [-n] [-r] [-s] [-v] [-w] pattern path [path ...]
+# usage:   paragrep [-c] [--color] [-i] [-F] [-n] [-r] [-s] [-v] [-w] pattern path [path ...]
 #
 # for description and examples, use: paragrep --help
 #
