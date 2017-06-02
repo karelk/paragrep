@@ -2,12 +2,11 @@
 #
 # 2013, karelk@ethz.ch
 #
-# Paragrep: print paragraph matching pattern(s)
+# Paragrep: print paragraph matching pattern
 #
 # Paragrep is simmilar to grep. But instead of printing matching line, paragrep
 # will print matching paragraph (one or more lines of text, separated by whitespace
-# characters). When multiple search patterns are provided, paragrep will print 
-# paragraphs matching all patterns. Command line options are simmilar to grep:
+# characters). Command line options are simmilar to grep:
 #
 # usage:   paragrep [-c] [-i] [-F] [-n] [-r] [-s] [-v] [-w] pattern path [path ...]
 #
@@ -48,8 +47,6 @@ if (args.fixed_strings or args.pattern in ['*','+','?']):
     PATTERN = re.compile(r'(' + re.escape(args.pattern) + r')', flags=CASE_SENSITIVITY_FLAG)
 else:
     PATTERN = re.compile(r'(' + args.pattern + r')', flags=CASE_SENSITIVITY_FLAG)
-
-
 
 
 def listFiles(dir):
