@@ -45,7 +45,7 @@ WHITESPACE = re.compile('^\s+$')
 if (args.fixed_strings or args.pattern in ['*','+','?']):
     PATTERN = re.compile(r'(' + re.escape(args.pattern) + r')', flags=CASE_SENSITIVITY_FLAG)
 else:
-    PATTERN = re.compile(r'(' + args.pattern + r')', flags=CASE_SENSITIVITY_FLAG)
+    PATTERN = re.compile(r'(' + WORD_MATCH_FLAG + args.pattern + WORD_MATCH_FLAG + r')', flags=CASE_SENSITIVITY_FLAG)
 
 
 def listFiles(dir):
