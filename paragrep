@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/bin/python3
 #
 # 2017, karelk@ethz.ch
 #
@@ -15,16 +15,17 @@
 import os, sys, argparse, re
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-c','--count'         , action='store_true', help='Only print number of matching paragraphs per file')
-parser.add_argument('--color'              , action='store_true', help='Force color')
-parser.add_argument('-F','--fixed-strings' , action='store_true', help='Interpret PATTERN as literal string')
-parser.add_argument('-i','--ignorecase'    , action='store_true', help='Treat upper and lower characters as same')
-parser.add_argument('-n','--line-number'   , action='store_true', help='Prefix each line of output with line number')
-parser.add_argument('-r','--recursive'     , action='store_true', help='When "path" is a directory, search all files recursively')
-parser.add_argument('-s','--supress'       , action='store_true', help="Suppress 'permission denied' error messages")
-parser.add_argument('-v','--invert-match'  , action='store_true', help='Invert matching: print non-matching paragraphs')
-parser.add_argument('-w','--word'          , action='store_true', help='Match only whole words')
-parser.add_argument('pattern'                                   , help='match pattern(s)')
+parser.add_argument('-c','--count'              , action='store_true', help='Only print number of matching paragraphs per file')
+parser.add_argument('--color'                   , action='store_true', help='Force color')
+parser.add_argument('-F','--fixed-strings'      , action='store_true', help='Interpret PATTERN as literal string')
+parser.add_argument('-i','--ignorecase'         , action='store_true', help='Treat upper and lower characters as same')
+parser.add_argument('-l','--files-with-matches' , action='store_true', help='Only print filename')
+parser.add_argument('-n','--line-number'        , action='store_true', help='Prefix each line of output with line number')
+parser.add_argument('-r','--recursive'          , action='store_true', help='When "path" is a directory, search all files recursively')
+parser.add_argument('-s','--supress'            , action='store_true', help="Suppress 'permission denied' error messages")
+parser.add_argument('-v','--invert-match'       , action='store_true', help='Invert matching: print non-matching paragraphs')
+parser.add_argument('-w','--word'               , action='store_true', help='Match only whole words')
+parser.add_argument('pattern'                                        , help='match pattern(s)')
 
 if sys.stdin.isatty():
     parser.add_argument('path', nargs='+', help='Path to search. If path is a directory, option -r must be used')
@@ -80,18 +81,22 @@ def paraGrep(f):
             if paragraph:
                 if INVERT_MATCH_FLAG == match:
                     count += 1
-                    if not args.count:
+                    #################################################################################################################
+                    # if option '-c/--count' or '-l/--files-with-matches' was provided, we don't want to print actual matching lines.
+                    # We are only interested if file contains match. So we can skip the printing here.
+                    if (not args.count and not args.files_with_matches):
                         if NL:
 			                # print newline only once at the begining, if some output is going to be printed 
-                            print
+                            print()
                             NL = 0
                         if LINE_NUMBER_FLAG:
                             for ln in paragraph:
-                                print '\033[0;32m%s:\033[0m %s' % (ln[0], re.sub(PATTERN, COLORED_STRING, ln[1])),
+                                print('\033[0;32m%s:\033[0m %s' % (ln[0], re.sub(PATTERN, COLORED_STRING, ln[1])), end='')
                         else:
                             for ln in paragraph:
-                                print re.sub(PATTERN, COLORED_STRING, ln[1]),
-                        print
+                                print(re.sub(PATTERN, COLORED_STRING, ln[1]), end='')
+                        print()
+                    #################################################################################################################
                 del paragraph[:]
             if (line == ''):
                 return count
@@ -108,8 +113,16 @@ if sys.stdin.isatty():
             try:
                 file = open(args.path[i],'r')
                 number_of_matches = paraGrep(file)
-                if (args.count and number_of_matches):
-                    print '%s: \033[1;31m%s\033[0m' % (args.path[i], number_of_matches)
+                ############################################################################
+                # if match was found in file
+                if number_of_matches:
+                    # if option '-l/--files-with-matches' was provided, print filename
+                    if args.files_with_matches:
+                        print('%s' % (args.path[i]))
+                    # if option '-c/--count' was provided, print filename: number_of_matches
+                    elif args.count:
+                        print('%s: \033[1;31m%s\033[0m' % (args.path[i], number_of_matches))
+                ############################################################################
                 file.close()
             except IOError as err:
                 if not args.supress:
@@ -127,8 +140,16 @@ if sys.stdin.isatty():
                     try:
                         file = open(fn,'r')
                         number_of_matches = paraGrep(file)
-                        if (args.count and number_of_matches):
-                            print '%s: \033[1;31m%s\033[0m' % (fn, number_of_matches)
+                        ############################################################################
+                        # if match was found in file
+                        if number_of_matches:
+                            # if option '-l/--files-with-matches' was provided, print filename
+                            if args.files_with_matches:
+                                print('%s' % (fn))
+                            # if option '-c/--count' was provided, print filename: number_of_matches
+                            elif args.count:
+                                print('%s: \033[1;31m%s\033[0m' % (fn, number_of_matches))
+                        ############################################################################
                         file.close()
                     except IOError as err:
                         if not args.supress:
