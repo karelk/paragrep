@@ -1,22 +1,23 @@
 #!/bin/python3
+
+########################################################################################################################
+# Paragrep is similar to grep. But instead of printing matching line, paragrep will print matching paragraph.
 #
-# 2017, karelk@ethz.ch
-#
-# Paragrep: print paragraph matching a pattern
-#
-# Paragrep is similar to grep. But instead of printing matching line, paragrep will 
-# print matching paragraph (one or more lines of text, separated by whitespace
-# characters). Command line options are similar to grep:
-#
-# usage:   paragrep [-c] [--color] [-i] [-F] [-n] [-r] [-s] [-v] [-w] pattern path [path ...]
+# Command line options are similar to grep:
+# usage:   paragrep [--color] [-c] [-F] [-i] [-l] [-n] [-r] [-s] [-v] [-w] pattern FILE [FILE ...]
 #
 # for description and examples, use: paragrep --help
+########################################################################################################################
 
 import os, sys, argparse, re
 
+########################################################################################################################
+###   argparse   #######################################################################################################
+########################################################################################################################
+
 parser = argparse.ArgumentParser()
-parser.add_argument('-c','--count'              , action='store_true', help='Only print number of matching paragraphs per file')
 parser.add_argument('--color'                   , action='store_true', help='Force color')
+parser.add_argument('-c','--count'              , action='store_true', help='Only print number of matching paragraphs per file')
 parser.add_argument('-F','--fixed-strings'      , action='store_true', help='Interpret PATTERN as literal string')
 parser.add_argument('-i','--ignorecase'         , action='store_true', help='Treat upper and lower characters as same')
 parser.add_argument('-l','--files-with-matches' , action='store_true', help='Only print filename')
@@ -25,29 +26,34 @@ parser.add_argument('-r','--recursive'          , action='store_true', help='Whe
 parser.add_argument('-s','--supress'            , action='store_true', help="Suppress 'permission denied' error messages")
 parser.add_argument('-v','--invert-match'       , action='store_true', help='Invert matching: print non-matching paragraphs')
 parser.add_argument('-w','--word'               , action='store_true', help='Match only whole words')
-parser.add_argument('pattern'                                        , help='match pattern(s)')
+parser.add_argument('pattern'                                        , help='match pattern')
 
 if sys.stdin.isatty():
     parser.add_argument('path', nargs='+', help='Path to search. If path is a directory, option -r must be used')
 
 args = parser.parse_args()
 
-INVERT_MATCH_FLAG     =  0                      if args.invert_match                   else 1
-LINE_NUMBER_FLAG      =  True                   if args.line_number                    else False
-CASE_SENSITIVITY_FLAG =  re.IGNORECASE          if args.ignorecase                     else 0
-WORD_MATCH_FLAG       =  r'\b'                  if args.word                           else ''
-COLORED_STRING        =  r'\033[1;31m\1\033[0m' if (sys.stdout.isatty() or args.color) else r'\1'
-
+########################################################################################################################
+###   set variables   ##################################################################################################
+########################################################################################################################
 
 NL = 1
 WHITESPACE = re.compile('^\s+$')
 
+WORD_MATCH	= r'\b'				if args.word				else ''
+LINE_NUMBER	= True				if args.line_number			else False
+INVERT_MATCH	= 0				if args.invert_match			else 1
+CASE_SENSITIVE	= re.IGNORECASE			if args.ignorecase			else 0
+COLORED_STRING	= r'\033[1;31m\1\033[0m'	if (sys.stdout.isatty() or args.color)	else r'\1'
 
-if (args.fixed_strings or args.pattern in ['*','+','?']):
-    PATTERN = re.compile(r'(' + re.escape(args.pattern) + r')', flags=CASE_SENSITIVITY_FLAG)
+########################################################################################################################
+###   functions   ######################################################################################################
+########################################################################################################################
+
+if args.fixed_strings:
+    PATTERN = re.compile(r'(' + re.escape(args.pattern) + r')', flags=CASE_SENSITIVE)
 else:
-    PATTERN = re.compile(r'(' + WORD_MATCH_FLAG + args.pattern + WORD_MATCH_FLAG + r')', flags=CASE_SENSITIVITY_FLAG)
-
+    PATTERN = re.compile(r'(' + WORD_MATCH + args.pattern + WORD_MATCH + r')', flags=CASE_SENSITIVE)
 
 def listFiles(dir):
     file_list = []
@@ -66,7 +72,6 @@ def listFiles(dir):
             sys.stderr.write('%s\n' % err)
     return file_list
 
-
 def paraGrep(f):
     global NL
     count = 0
@@ -75,11 +80,18 @@ def paraGrep(f):
     match = 0
 
     while True:
-        line = f.readline()
+
+        # try reading line 
+        try:
+            line = f.readline()
+        # abort if file seems to be binary
+        except UnicodeDecodeError:
+            return 0
+ 
         line_number += 1
         if (WHITESPACE.match(line) or line == ''):
             if paragraph:
-                if INVERT_MATCH_FLAG == match:
+                if INVERT_MATCH == match:
                     count += 1
                     #################################################################################################################
                     # if option '-c/--count' or '-l/--files-with-matches' was provided, we don't want to print actual matching lines.
@@ -89,7 +101,7 @@ def paraGrep(f):
 			                # print newline only once at the begining, if some output is going to be printed 
                             print()
                             NL = 0
-                        if LINE_NUMBER_FLAG:
+                        if LINE_NUMBER:
                             for ln in paragraph:
                                 print('\033[0;32m%s:\033[0m %s' % (ln[0], re.sub(PATTERN, COLORED_STRING, ln[1])), end='')
                         else:
@@ -106,6 +118,9 @@ def paraGrep(f):
             if re.search(PATTERN, line):
                 match = 1
 
+########################################################################################################################
+###   main   ###########################################################################################################
+########################################################################################################################
 
 if sys.stdin.isatty():
     for i in range(len(args.path)):
@@ -135,7 +150,7 @@ if sys.stdin.isatty():
                 sys.stderr.write(' \033[1;31m%s\033[0m is a directory. Use option: \033[1;31m-r\033[0m  \n' % args.path[i])
                 sys.exit(1)
             else:
-                LINE_NUMBER_FLAG = False
+                LINE_NUMBER = False
                 for fn in listFiles(args.path[i]):
                     try:
                         file = open(fn,'r')
