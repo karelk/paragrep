@@ -27,9 +27,7 @@ parser.add_argument('-s','--supress'            , action='store_true', help="Sup
 parser.add_argument('-v','--invert-match'       , action='store_true', help='Invert matching: print non-matching paragraphs')
 parser.add_argument('-w','--word'               , action='store_true', help='Match only whole words')
 parser.add_argument('pattern'                                        , help='match pattern')
-
-if sys.stdin.isatty():
-    parser.add_argument('path', nargs='+', help='Path to search. If path is a directory, option -r must be used')
+parser.add_argument('path'                      , nargs='*'          , help='Path to search. If path is a directory, option -r must be used')
 
 args = parser.parse_args()
 
@@ -122,7 +120,7 @@ def paraGrep(f):
 ###   main   ###########################################################################################################
 ########################################################################################################################
 
-if sys.stdin.isatty():
+if args.path:
     for i in range(len(args.path)):
         if os.path.isfile(args.path[i]):
             try:
