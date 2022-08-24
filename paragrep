@@ -1,52 +1,81 @@
 #!/bin/python3
 
-########################################################################################################################
-# Paragrep is similar to grep. But instead of printing matching line, paragrep will print matching paragraph.
-#
-# Command line options are similar to grep:
-# usage:   paragrep [--color] [-c] [-F] [-i] [-l] [-n] [-r] [-s] [-v] [-w] pattern FILE [FILE ...]
-#
-# for description and examples, use: paragrep --help
-########################################################################################################################
+##############################################################################################################################################################
+# Paragrep acts like grep, but instead of printing matching line, it prints matching paragraph. Command line options are similar to grep:
+# usage:   paragrep [-A num] [-B num] [-C num] [-F] [--color] [-c] [--delimiter='string'] [-i] [-l] [-n] [-r] [-s] [-v] [-w] pattern FILE [FILE ...]
+##############################################################################################################################################################
 
 import os, sys, argparse, re
 
-########################################################################################################################
-###   argparse   #######################################################################################################
-########################################################################################################################
+##############################################################################################################################################################
+###   argparse   #############################################################################################################################################
+##############################################################################################################################################################
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--color'                   , action='store_true', help='Force color')
-parser.add_argument('-c','--count'              , action='store_true', help='Only print number of matching paragraphs per file')
-parser.add_argument('-F','--fixed-strings'      , action='store_true', help='Interpret PATTERN as literal string')
-parser.add_argument('-i','--ignorecase'         , action='store_true', help='Treat upper and lower characters as same')
-parser.add_argument('-l','--files-with-matches' , action='store_true', help='Only print filename')
-parser.add_argument('-n','--line-number'        , action='store_true', help='Prefix each line of output with line number')
-parser.add_argument('-r','--recursive'          , action='store_true', help='When "path" is a directory, search all files recursively')
-parser.add_argument('-s','--supress'            , action='store_true', help="Suppress 'permission denied' error messages")
-parser.add_argument('-v','--invert-match'       , action='store_true', help='Invert matching: print non-matching paragraphs')
-parser.add_argument('-w','--word'               , action='store_true', help='Match only whole words')
-parser.add_argument('pattern'                                        , help='match pattern')
-parser.add_argument('path'                      , nargs='*'          , help='Path to search. If path is a directory, option -r must be used')
+
+parser.add_argument('-A','--after-context',	type=int,		help='print NUM lines after matching line')
+parser.add_argument('-B','--before-context',	type=int,		help='print NUM lines before matching line')
+parser.add_argument('-C','--context',		type=int,		help='print NUM lines of context')
+parser.add_argument('-F','--fixed-strings',	action='store_true',	help='Interpret PATTERN as literal string')
+parser.add_argument('-c','--count',		action='store_true',	help='Only print number of matching paragraphs per file')
+parser.add_argument('--color',			action='store_true',	help='Force color')
+parser.add_argument('--delimiter',					help='Specify Delimiter for separating paragraphs')
+parser.add_argument('-i','--ignorecase',	action='store_true',	help='Ignore Case')
+parser.add_argument('-l','--files-with-matches',action='store_true',	help='Only print filename')
+parser.add_argument('-n','--line-number',	action='store_true',	help='Prefix each line of output with line number')
+parser.add_argument('-r','--recursive',		action='store_true',	help='When "path" is a directory, search all files recursively')
+parser.add_argument('-s','--supress',		action='store_true',	help="Suppress 'permission denied' error messages")
+parser.add_argument('-v','--invert-match',	action='store_true',	help='Invert matching: print non-matching paragraphs')
+parser.add_argument('-w','--word',		action='store_true',	help='Match only whole words')
+parser.add_argument('pattern',						help='match pattern')
+parser.add_argument('path',			nargs='*',		help='Path to search. If path is a directory, option -r must be used')
 
 args = parser.parse_args()
 
-########################################################################################################################
-###   set variables   ##################################################################################################
-########################################################################################################################
+##############################################################################################################################################################
+###   set variables   ########################################################################################################################################
+##############################################################################################################################################################
 
 NL = 1
-WHITESPACE = re.compile('^\s+$')
 
-WORD_MATCH	= r'\b'				if args.word				else ''
-LINE_NUMBER	= True				if args.line_number			else False
-INVERT_MATCH	= 0				if args.invert_match			else 1
-CASE_SENSITIVE	= re.IGNORECASE			if args.ignorecase			else 0
-COLORED_STRING	= r'\033[1;31m\1\033[0m'	if (sys.stdout.isatty() or args.color)	else r'\1'
+WORD_MATCH	= r'\b'					if args.word				else ''
+LINE_NUMBER	= True					if args.line_number			else False
+INVERT_MATCH	= -1					if args.invert_match			else 1
+CASE_SENSITIVE	= re.IGNORECASE				if args.ignorecase			else 0
+COLORED_STRING	= r'\033[1;31m\1\033[0m'		if (sys.stdout.isatty() or args.color)	else r'\1'
 
-########################################################################################################################
-###   functions   ######################################################################################################
-########################################################################################################################
+##############################################################################################################################################################
+###   context   ##############################################################################################################################################
+##############################################################################################################################################################
+
+A, B		= -1, -1
+
+if args.context:
+    if (args.context > 0):
+        A, B	= args.context, args.context
+    else:
+        sys.stderr.write(f'\n Negative context makes no sense: {args.context}\n\n')
+        sys.exit(1)
+else:
+    if args.before_context:
+        B	= args.before_context
+    if args.after_context:
+        A	= args.after_context
+
+##############################################################################################################################################################
+###   delimiter   ############################################################################################################################################
+##############################################################################################################################################################
+
+if args.delimiter:
+    delimiter	= args.delimiter
+    DELIMITER	= re.compile('^'+ delimiter +'$')
+else:
+    delimiter	= ''
+    DELIMITER	= re.compile('^\s*$')
+
+##############################################################################################################################################################
+###   helper functions   #####################################################################################################################################
+##############################################################################################################################################################
 
 if args.fixed_strings:
     PATTERN = re.compile(r'(' + re.escape(args.pattern) + r')', flags=CASE_SENSITIVE)
@@ -70,12 +99,19 @@ def listFiles(dir):
             sys.stderr.write('%s\n' % err)
     return file_list
 
+##############################################################################################################################################################
+###   paragrep   #############################################################################################################################################
+##############################################################################################################################################################
+
 def paraGrep(f):
     global NL
     count = 0
+
+    context = []
     paragraph = []
+
+    match = (A + 2 * INVERT_MATCH)
     line_number = 0
-    match = 0
 
     while True:
 
@@ -87,38 +123,94 @@ def paraGrep(f):
             return 0
  
         line_number += 1
-        if (WHITESPACE.match(line) or line == ''):
+
+        ######################################################################################################################################################
+        if (DELIMITER.match(line) or line == ''): ###   we have reached end of paragraph or end of file  #####################################################
+        ######################################################################################################################################################
+
+            # if paragraph[] is not empty
             if paragraph:
-                if INVERT_MATCH == match:
+
+                # append this whole paragraph to context
+                context.append(paragraph[:])
+                context[-1][-1].append(line)
+
+                ##############################################################################################################################################
+                if match < INVERT_MATCH: ###   if paragraph has match   ######################################################################################
+                ##############################################################################################################################################
+
                     count += 1
-                    #################################################################################################################
-                    # if option '-c/--count' or '-l/--files-with-matches' was provided, we don't want to print actual matching lines.
-                    # We are only interested if file contains match. So we can skip the printing here.
+
+                    ##########################################################################################################################################
+                    ###   Do not print lines if '--count' or '--files-with-matches' was provided. Only count matching lines   ################################
+                    ##########################################################################################################################################
+
                     if (not args.count and not args.files_with_matches):
+
+                        # print delimiter only once at the begining, if some output is going to be printed
                         if NL:
-			                # print newline only once at the begining, if some output is going to be printed 
-                            print()
+                            print(delimiter)
                             NL = 0
-                        if LINE_NUMBER:
-                            for ln in paragraph:
-                                print('\033[0;32m%s:\033[0m %s' % (ln[0], re.sub(PATTERN, COLORED_STRING, ln[1])), end='')
-                        else:
-                            for ln in paragraph:
-                                print(re.sub(PATTERN, COLORED_STRING, ln[1]), end='')
-                        print()
-                    #################################################################################################################
+ 
+                        ######################################################################################################################################
+                        if LINE_NUMBER: ######################################################################################################################
+                        ######################################################################################################################################
+
+                            for p in context:
+                                for ln in p:
+                                    print('\033[0;32m%s:\033[0m %s' % (ln[0], re.sub(PATTERN, COLORED_STRING, ln[1])), end='')
+                                print(delimiter)
+
+                        ######################################################################################################################################
+                        else: ################################################################################################################################
+                        ######################################################################################################################################
+
+                            for p in context:
+                                for ln in p:
+                                    print(re.sub(PATTERN, COLORED_STRING, ln[1]), end='')
+                                print(delimiter)
+
+                    del context[:]
+
+                ##############################################################################################################################################
+                else: ###   end of paragraph without match   #################################################################################################
+                ##############################################################################################################################################
+
+                    if (match <= A):
+
+                        for ln in paragraph:
+                            print(re.sub(PATTERN, COLORED_STRING, ln[1]), end='')
+
+                        print(delimiter)
+
+                        del context[:]
+
+                ##############################################################################################################################################
+                ##############################################################################################################################################
+                ##############################################################################################################################################
+                    
+                del context[:-B]
                 del paragraph[:]
+
             if (line == ''):
                 return count
-            match = 0
-        else:
+
+            match += INVERT_MATCH
+
+        ######################################################################################################################################################
+        else: ###  we are still inside paragraph   ###########################################################################################################
+        ######################################################################################################################################################
+
             paragraph.append([line_number, line])
             if re.search(PATTERN, line):
-                match = 1
+                match = 0
 
-########################################################################################################################
-###   main   ###########################################################################################################
-########################################################################################################################
+##############################################################################################################################################################
+###   main   #################################################################################################################################################
+##############################################################################################################################################################
+
+# if no match was found, exit code will be 1
+return_code = 1
 
 if args.path:
     for i in range(len(args.path)):
@@ -129,6 +221,8 @@ if args.path:
                 ############################################################################
                 # if match was found in file
                 if number_of_matches:
+                    # at least one match was found, exit code will be 0
+                    return_code = 0
                     # if option '-l/--files-with-matches' was provided, print filename
                     if args.files_with_matches:
                         print('%s' % (args.path[i]))
@@ -173,6 +267,7 @@ if args.path:
                         sys.exit(1)
         else:
             sys.stderr.write('[Errno ] not a file or directory: %s \n' % args.path[i])
+    sys.exit(return_code)
 else:
     number_of_matches = paraGrep(sys.stdin)
 
