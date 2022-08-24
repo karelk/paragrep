@@ -12,6 +12,7 @@ paragrep
 Example usage
 =============
 
+```
  paragrep eth0 /etc/network/interfaces
 
  paragrep -r 'Directory' /etc/apache2/sites-enabled/
@@ -19,4 +20,4 @@ Example usage
  dmidecode | paragrep -i cpu
 
  lspci -v | paragrep iwlwifi
-
+```
