@@ -6,8 +6,9 @@ paragrep
 
  Command line options are similar to grep:
 
-   paragrep [-A num] [-B num] [-C num] [-F] [--color] [-c] [--delimiter='string'] [-i] [-l] [-n] [-r] [-s] [-v] [-w] pattern FILE [FILE ...]
-
+```
+ paragrep [-A num] [-B num] [-C num] [-F] [--color] [-c] [--delimiter='string'] [-i] [-l] [-n] [-r] [-s] [-v] [-w] pattern FILE [FILE ...]
+```
 
 Example usage
 =============
